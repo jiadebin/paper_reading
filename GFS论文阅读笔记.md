@@ -22,7 +22,7 @@ GFS在performance、scalability、reliability、availability方面与传统DFS�
 GFS提供了熟悉的文件系统接口，支持常见的文件操作，如create、delete、open、close、read、write。此外，GFS还支持snapshot、record append操作。
 ### 2.3 Architecture
 GFS cluster包含单个master和多个chunkserver。
- 
+![gfs architecture](img/fig1.png)
 文件被分割为固定size的chunk，每个chunk有唯一64位的全局handle（句柄），master创建该chunk时生成。Chunkserver以普通Linux文件形式存储chunk，根据chunk handle和byte range（即要操作哪个chunk的哪些字节）来对一个特定chunk进行读写。每个chunk会复制到多个chunkserver上保证reliability，通常三副本。
 Master保存文件系统的metadata。包括namespace、访问控制信息、file到chunk的映射信息、chunk的当前location；它也控制系统级活动，如chunk lease管理，孤儿chunk回收，chunk迁移。Master周期性与每个chunkserver进行heartbeat信息通信来发送指令和收集chunkserver的state信息。  
 GFS client实现了文件系统API来与master/chunkserver通信，进行数据读写。Client与master通信进行metadata操作，所有的数据通信都直接与chunkserver通信。
@@ -59,7 +59,7 @@ Recovery过程中只需最新的checkpoint和后面的log，进行重放即可�
 ### 2.7 Consistency model
 #### 2.7.1 Guarantees by GFS
 File namespace的操作（如create）是原子的，这种操作只由master执行，namespace通过加锁来保证原子性和正确性。
- 
+![gfs](img/fig2.png)
 File region的state分为defined、undefined、consistent、inconsistent。区别如下：
 * Consistent：所有的client都能看到相同的data，无论读取哪一个副本。
 * Defined：不仅是consistent的，而且client能够看到全部的修改（mutation writes in its entirety）。
@@ -80,7 +80,7 @@ b. 使用chunk version number来检查哪些chunk是过期的。
 Master将lease赋予chunk的某个replica，作为primary，primary replica执行所有的mutation（按一定顺序），然后其他replica也按primary的order执行mutation。
 Lease机制是为了减小master的管理负担，lease的初始timeout是60s。但是，只要chunk一直在被写入，那么primary就可以无限请求延长lease，延长lease请求和授权回复都会集成在master与chunkserver的heartbeat消息中。Master也可以在lease到期之前revoke它（当master对一个file进行rename时它不想它的内容被修改）。当master和primary失联时，它会在lease过期之后授权给其他replica。
 Figure-2是write的control和data流程。主要包含以下步骤：
- 
+![gfs](img/fig3.png)
 1.  Client询问master哪个chunkserver持有目标chunk的lease，以及其他replica的location信息。如果没有server持有lease，master会立即授予给一个。
 2.  Master回复primary的身份和其他replica的locations。Client会cache这些信息。当primary变得不可达时或者它回复说自己没有lease了时，client才会重新联系master。
 3.  Client发送数据给所有的replicas。Client可以以任何order做这件事。通过解耦数据和控制流，我们可以利用网络拓扑来规划data flow，这样可以提高传输性能。
@@ -165,3 +165,7 @@ Checksum计算主要针对append操作进行了优化，因为append是我们的
 空闲的时候，chunkserver会scan并验证inactive chunk的内容。及时发现损坏的数据。
 ### 5.3 Diagnostic tools
 诊断日志可以帮助定位问题、调试、性能分析，且开销很小。因为日志是顺序、异步写入的，所以性能影响也很小。
+    
+
+
+
