@@ -128,6 +128,7 @@ hashmap的key是chunk handle，value是其他信息。
 
 
 讨论：
+
 1、chunk的version number信息汇报一般不走heartbeat，heartbeat包含的信息通常很小。chunkserver重启之后汇报chunk信息的过程叫做report。
 
 2、如果写入某个chunk时，两个副本写成功，第三个写失败，如果master协调复制出一份再继续写的话可能会很慢，复制过程比较耗时，优化方式是不再使用这个chunk，由于是append操作，不是overwrite，因此可以直接新开一个chunk2，chunk2又有三个副本，直接将数据写入chunk2的三个副本即可，而原先的chunk末尾加padding即可，这样效率更高。
