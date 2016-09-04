@@ -127,10 +127,15 @@ hashmap的key是chunk handle，value是其他信息。
 如果master遇到了比自己version number大的chunk出现在某个chunkserver上，那么它会将该chunk的version number更新为这个更大的值。
 
 
-### 讨论：
+**讨论：**
 
 1、chunk的version number信息汇报一般不走heartbeat，heartbeat包含的信息通常很小。chunkserver重启之后汇报chunk信息的过程叫做report。
 
 2、如果写入某个chunk时，两个副本写成功，第三个写失败，如果master协调复制出一份再继续写的话可能会很慢，复制过程比较耗时，优化方式是不再使用这个chunk，由于是append操作，不是overwrite，因此可以直接新开一个chunk2，chunk2又有三个副本，直接将数据写入chunk2的三个副本即可，而原先的chunk末尾加padding即可，这样效率更高。
 
 3、GFS副本的特点是，三个副本必须同时在线且都写入成功才能返回成功，写入期间如果有副本宕机，则需要master协调生成新副本，这与Paxos的多数派协议是不同的，好处是三个副本可以同时提供读服务，而Paxos只有leader副本保证是最新的，多数派成员是不固定的。GFS二代产品开始采用Paxos一致性协议了。
+
+**相关参考：**
+1. [【分布式系统工程实现】GFS&Bigtable设计的优势](http://www.nosqlnotes.net/archives/71#comments)，这篇文章分析了GFS+Bigtable的优势，评论中讨论了其与NWR系统的区别，以及GFS会出现不一致的数据，上层的Bigtable如何保证强一致。
+2. [dynamo与bigtable的对比](http://www.cnblogs.com/zhaoyl/archive/2012/10/09/2716576.html)，对二者进行了详细比较。
+3. [bigtable系统论文分析](http://blog.csdn.net/opennaive/article/details/7532589)，推测了bigtable中用到的数据结构，如元数据。
